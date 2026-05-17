@@ -1,5 +1,11 @@
 # @aoagents/ao
 
+## 0.9.0
+
+### Patch Changes
+
+- @aoagents/ao-cli@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes
