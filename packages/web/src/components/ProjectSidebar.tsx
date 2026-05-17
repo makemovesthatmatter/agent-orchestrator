@@ -262,6 +262,17 @@ function ProjectSidebarEmpty({ collapsed = false }: { collapsed?: boolean }) {
       </div>
       <div className="project-sidebar__footer">
         <div className="flex items-center justify-end gap-1 border-t border-[var(--color-border-subtle)] px-2 py-2">
+          <Link
+            href="/agentic-os"
+            className="project-sidebar__footer-btn flex items-center gap-1.5 px-1"
+            title="Agentic OS"
+            aria-label="Agentic OS"
+          >
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </Link>
           <ThemeToggle className="project-sidebar__theme-toggle" />
         </div>
       </div>
@@ -1151,6 +1162,17 @@ function ProjectSidebarInner({
               </div>
             ) : null}
           </div>
+          <Link
+            href="/agentic-os"
+            className="project-sidebar__footer-btn flex items-center gap-1.5 px-1"
+            title="Agentic OS"
+            aria-label="Agentic OS"
+          >
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </Link>
           <ThemeToggle className="project-sidebar__theme-toggle" />
         </div>
       </div>
