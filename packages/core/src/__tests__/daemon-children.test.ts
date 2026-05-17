@@ -157,6 +157,7 @@ describe("AO orphan detection", () => {
       "  22222   3333 node /opt/homebrew/bin/ao lifecycle-worker not-an-orphan",
       "  33333      1 node next-server (v15.5.15)",
       "  33334      1 node /home/user/projects/my-ao-web-app/next/dist/server/next-server.js",
+      "  33335      1 node /home/user/node_modules/@aoagents/ao-web-fork/node_modules/next/dist/server/next-server.js",
       "  44444      1 node unrelated-server.js",
     ].join("\n");
 

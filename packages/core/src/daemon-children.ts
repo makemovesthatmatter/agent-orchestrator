@@ -405,13 +405,32 @@ function commandLooksLikeNode(command: string): boolean {
   return basename === "node" || basename === "node.exe";
 }
 
+function containsAoWebPackageToken(command: string): boolean {
+  const token = "@aoagents/ao-web";
+  let index = command.indexOf(token);
+
+  while (index !== -1) {
+    const before = index === 0 ? "" : command[index - 1];
+    const after = command[index + token.length] ?? "";
+    const hasPrefixBoundary = before === "" || before === "/" || isAsciiWhitespace(before);
+    const hasSuffixBoundary =
+      after === "" || after === "/" || after === "@" || isAsciiWhitespace(after);
+
+    if (hasPrefixBoundary && hasSuffixBoundary) return true;
+    index = command.indexOf(token, index + token.length);
+  }
+
+  return false;
+}
+
 export function classifyAoOrphanCommand(command: string): string | null {
   if (!commandLooksLikeNode(command)) return null;
 
   const normalized = normalizeCommand(command);
+  const isAoWebPackage = containsAoWebPackageToken(normalized);
 
   if (
-    normalized.includes("@aoagents/ao-web") &&
+    isAoWebPackage &&
     (normalized.includes("/dist-server/") || normalized.includes(" dist-server/"))
   ) {
     return "ao-web";
@@ -422,7 +441,7 @@ export function classifyAoOrphanCommand(command: string): string | null {
   ) {
     return "lifecycle-worker";
   }
-  if (normalized.includes("next-server") && normalized.includes("@aoagents")) {
+  if (normalized.includes("next-server") && isAoWebPackage) {
     return "next-server";
   }
   return null;
