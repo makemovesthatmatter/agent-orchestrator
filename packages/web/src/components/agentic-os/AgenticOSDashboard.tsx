@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { AgenticOSSummary } from "@/lib/agentic-os-db";
 import { CostCards } from "./CostCards";
 import { CostChart } from "./CostChart";
@@ -31,21 +33,95 @@ function formatTimestamp(ts: string | null): string {
 function Section({
   title,
   children,
+  action,
 }: {
   title: string;
   children: React.ReactNode;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-        {title}
-      </h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+          {title}
+        </h2>
+        {action}
+      </div>
       {children}
     </section>
   );
 }
 
+type DreamStatus = "idle" | "running" | "done" | "error";
+
+function RunDreamButton() {
+  const [status, setStatus] = useState<DreamStatus>("idle");
+  const router = useRouter();
+
+  const handleRun = useCallback(async () => {
+    setStatus("running");
+    try {
+      const res = await fetch("/api/agentic-os/dream/run", { method: "POST" });
+      if (!res.ok) {
+        setStatus("error");
+        return;
+      }
+      setStatus("done");
+      setTimeout(() => {
+        setStatus("idle");
+        router.refresh();
+      }, 3000);
+    } catch {
+      setStatus("error");
+    }
+  }, [router]);
+
+  return (
+    <button
+      onClick={handleRun}
+      disabled={status === "running"}
+      className="inline-flex items-center gap-1.5 rounded border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
+    >
+      {status === "running" && (
+        <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3a9 9 0 1 0 9 9" />
+        </svg>
+      )}
+      {status === "done" && (
+        <svg className="h-3 w-3 text-[var(--color-status-working)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      )}
+      {status === "error" && (
+        <svg className="h-3 w-3 text-[var(--color-status-error)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" />
+        </svg>
+      )}
+      {status === "idle" && (
+        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+      )}
+      {status === "running" ? "Running..." : status === "done" ? "Started" : status === "error" ? "Failed" : "Run Dream"}
+    </button>
+  );
+}
+
 export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
+  const router = useRouter();
+
+  const handleRecommendationAction = useCallback(async (id: number, action: "dismiss" | "snooze" | "apply") => {
+    const res = await fetch("/api/agentic-os/recommendations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action, snoozeHours: 24 }),
+    });
+    if (res.ok) {
+      router.refresh();
+    }
+    return res.ok;
+  }, [router]);
+
   if (!summary.available) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-8">
@@ -53,9 +129,10 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
           <p className="mb-2 text-[18px] font-semibold text-[var(--color-text-primary)]">
             Agentic OS not configured
           </p>
-          <p className="text-[13px] text-[var(--color-text-secondary)]">
+          <p className="mb-4 text-[13px] text-[var(--color-text-secondary)]">
             Run <code className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 font-mono text-[12px]">/dream</code> to create the database and start self-improvement analysis.
           </p>
+          <RunDreamButton />
         </div>
       </div>
     );
@@ -68,15 +145,18 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
       <div className="mx-auto max-w-4xl px-4 py-6">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/"
-            className="mb-3 inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Dashboard
-          </Link>
+          <div className="mb-3 flex items-center justify-between">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Dashboard
+            </Link>
+            <RunDreamButton />
+          </div>
           <h1 className="text-[20px] font-semibold text-[var(--color-text-primary)]">
             Agentic OS
           </h1>
@@ -131,7 +211,7 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
         )}
 
         {/* Findings Summary */}
-        <Section title={`Findings — Latest Run`}>
+        <Section title="Findings — Latest Run">
           <FindingsBadges counts={summary.findingCounts} />
         </Section>
 
@@ -143,8 +223,32 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
         </Section>
 
         {/* Pending Recommendations */}
-        <Section title={`Pending Recommendations (${summary.pendingRecommendations.length})`}>
-          <RecommendationList recommendations={summary.pendingRecommendations} />
+        <Section
+          title={`Pending Recommendations (${summary.pendingRecommendations.length})`}
+          action={
+            summary.pendingRecommendations.length > 5 ? (
+              <button
+                onClick={async () => {
+                  for (const rec of summary.pendingRecommendations) {
+                    await fetch("/api/agentic-os/recommendations", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ id: rec.id, action: "dismiss" }),
+                    });
+                  }
+                  router.refresh();
+                }}
+                className="text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-status-error)] transition-colors"
+              >
+                Dismiss all
+              </button>
+            ) : null
+          }
+        >
+          <RecommendationList
+            recommendations={summary.pendingRecommendations}
+            onAction={handleRecommendationAction}
+          />
         </Section>
 
         {/* Health */}

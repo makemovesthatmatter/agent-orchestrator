@@ -1,10 +1,12 @@
 import "server-only";
 import Database from "better-sqlite3";
-import { join } from "path";
+import { join, resolve } from "path";
 import { existsSync, statSync } from "fs";
+import { homedir } from "os";
 import { getAoBaseDir } from "@aoagents/ao-core";
 
 const DB_PATH = join(getAoBaseDir(), "agentic-os.db");
+const DREAM_SCRIPT = resolve(homedir(), ".claude/skills/dream/lib/scheduler.py");
 
 function getDb(): Database.Database | null {
   if (!existsSync(DB_PATH)) return null;
@@ -12,6 +14,14 @@ function getDb(): Database.Database | null {
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
   db.pragma("query_only = ON");
+  return db;
+}
+
+function getWriteDb(): Database.Database | null {
+  if (!existsSync(DB_PATH)) return null;
+  const db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+  db.pragma("busy_timeout = 5000");
   return db;
 }
 
@@ -199,6 +209,66 @@ export function getCostDetails(period: string = "30d"): CostRecord[] {
     return db.prepare(`
       SELECT * FROM cost_records WHERE period_date >= ? ORDER BY period_date DESC, total_cost_usd DESC
     `).all(since) as CostRecord[];
+  } finally {
+    db.close();
+  }
+}
+
+export function dismissRecommendation(id: number): boolean {
+  const db = getWriteDb();
+  if (!db) return false;
+  try {
+    const result = db.prepare(
+      "UPDATE recommendations SET status = 'dismissed', acted_at = datetime('now') WHERE id = ? AND status = 'created'"
+    ).run(id);
+    return result.changes > 0;
+  } finally {
+    db.close();
+  }
+}
+
+export function snoozeRecommendation(id: number, hours: number = 24): boolean {
+  const db = getWriteDb();
+  if (!db) return false;
+  try {
+    const until = new Date(Date.now() + hours * 3600000).toISOString();
+    const result = db.prepare(
+      "UPDATE recommendations SET status = 'snoozed', snoozed_until = ?, acted_at = datetime('now') WHERE id = ? AND status = 'created'"
+    ).run(until, id);
+    return result.changes > 0;
+  } finally {
+    db.close();
+  }
+}
+
+export function applyRecommendation(id: number): { recommendation: Recommendation | null } {
+  const db = getWriteDb();
+  if (!db) return { recommendation: null };
+  try {
+    const rec = db.prepare(
+      "SELECT id, finding_id, type, title, description, status, action_payload, created_at FROM recommendations WHERE id = ?"
+    ).get(id) as Recommendation | undefined;
+    if (!rec || rec.status !== "created") return { recommendation: null };
+    db.prepare(
+      "UPDATE recommendations SET status = 'applied', acted_at = datetime('now') WHERE id = ?"
+    ).run(id);
+    return { recommendation: rec };
+  } finally {
+    db.close();
+  }
+}
+
+export function getDreamScriptPath(): string {
+  return DREAM_SCRIPT;
+}
+
+export function getRecommendation(id: number): Recommendation | null {
+  const db = getDb();
+  if (!db) return null;
+  try {
+    return (db.prepare(
+      "SELECT id, finding_id, type, title, description, status, action_payload, created_at FROM recommendations WHERE id = ?"
+    ).get(id) as Recommendation) ?? null;
   } finally {
     db.close();
   }

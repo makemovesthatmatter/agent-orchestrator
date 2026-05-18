@@ -50,8 +50,43 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-export function RecommendationList({ recommendations }: { recommendations: Recommendation[] }) {
+function ActionButton({
+  label,
+  variant,
+  onClick,
+  loading,
+}: {
+  label: string;
+  variant: "primary" | "muted" | "danger";
+  onClick: () => void;
+  loading?: boolean;
+}) {
+  const styles = {
+    primary: "border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-tint-violet)]",
+    muted: "border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]",
+    danger: "border-[var(--color-status-error)] text-[var(--color-status-error)] hover:bg-[var(--color-tint-red)]",
+  };
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      disabled={loading}
+      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 ${styles[variant]}`}
+    >
+      {loading ? "..." : label}
+    </button>
+  );
+}
+
+export function RecommendationList({
+  recommendations,
+  onAction,
+}: {
+  recommendations: Recommendation[];
+  onAction?: (id: number, action: "dismiss" | "snooze" | "apply") => Promise<boolean>;
+}) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   if (recommendations.length === 0) {
     return (
@@ -61,15 +96,22 @@ export function RecommendationList({ recommendations }: { recommendations: Recom
     );
   }
 
+  const handleAction = async (id: number, action: "dismiss" | "snooze" | "apply") => {
+    if (!onAction) return;
+    setLoadingAction(`${id}-${action}`);
+    await onAction(id, action);
+    setLoadingAction(null);
+  };
+
   return (
     <div className="space-y-2">
       {recommendations.map((rec) => {
         const isExpanded = expandedId === rec.id;
         return (
-          <button
+          <div
             key={rec.id}
             onClick={() => setExpandedId(isExpanded ? null : rec.id)}
-            className="w-full rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-border-default)]"
+            className="cursor-pointer rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2.5 transition-colors hover:border-[var(--color-border-default)]"
           >
             <div className="mb-1 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -102,7 +144,7 @@ export function RecommendationList({ recommendations }: { recommendations: Recom
               </div>
             )}
             {isExpanded && (
-              <div className="mt-1 space-y-2">
+              <div className="mt-1 space-y-3">
                 <div className="text-[11px] text-[var(--color-text-secondary)] whitespace-pre-wrap">
                   {rec.description}
                 </div>
@@ -116,14 +158,33 @@ export function RecommendationList({ recommendations }: { recommendations: Recom
                     </pre>
                   </div>
                 )}
+                {onAction && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border-subtle)]">
+                    <ActionButton
+                      label="Apply"
+                      variant="primary"
+                      loading={loadingAction === `${rec.id}-apply`}
+                      onClick={() => handleAction(rec.id, "apply")}
+                    />
+                    <ActionButton
+                      label="Snooze 24h"
+                      variant="muted"
+                      loading={loadingAction === `${rec.id}-snooze`}
+                      onClick={() => handleAction(rec.id, "snooze")}
+                    />
+                    <ActionButton
+                      label="Dismiss"
+                      variant="danger"
+                      loading={loadingAction === `${rec.id}-dismiss`}
+                      onClick={() => handleAction(rec.id, "dismiss")}
+                    />
+                  </div>
+                )}
               </div>
             )}
-          </button>
+          </div>
         );
       })}
-      <p className="pt-1 text-[10px] text-[var(--color-text-muted)]">
-        Use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 font-mono">/recommend</code> to review and act on these.
-      </p>
     </div>
   );
 }
