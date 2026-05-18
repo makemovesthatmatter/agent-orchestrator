@@ -43,12 +43,12 @@ export interface CostRecord {
 
 export interface Recommendation {
   id: number;
-  run_id: number;
+  finding_id: number;
   type: string;
   title: string;
   description: string;
   status: string;
-  payload: string | null;
+  action_payload: string | null;
   created_at: string;
 }
 
@@ -105,10 +105,10 @@ export function getAgenticOSSummary(): AgenticOSSummary {
     const schemaVersion = (db.prepare("SELECT MAX(version) as v FROM schema_version").get() as { v: number })?.v ?? null;
 
     const dreamRuns = db.prepare(`
-      SELECT id, started_at, finished_at, status, trigger, dimensions,
-        (SELECT COUNT(*) FROM findings WHERE run_id = dream_runs.id) as findings_count,
-        (SELECT COUNT(*) FROM recommendations WHERE run_id = dream_runs.id) as recommendations_count,
-        collector_results
+      SELECT id, started_at, completed_at as finished_at, status, trigger, dimensions,
+        (SELECT COUNT(*) FROM dream_findings WHERE run_id = dream_runs.id) as findings_count,
+        recommendations_created as recommendations_count,
+        collector_status as collector_results
       FROM dream_runs
       ORDER BY id DESC
       LIMIT 20
@@ -136,18 +136,18 @@ export function getAgenticOSSummary(): AgenticOSSummary {
     `).all(monthAgo) as Array<{ date: string; cost: number }>;
 
     const pendingRecommendations = db.prepare(`
-      SELECT id, run_id, type, title, description, status, payload, created_at
+      SELECT id, finding_id, type, title, description, status, action_payload, created_at
       FROM recommendations WHERE status = 'created'
       ORDER BY id DESC LIMIT 50
     `).all() as Recommendation[];
 
     const recentFindings = db.prepare(`
       SELECT id, run_id, dimension, category, severity, title, detail, created_at
-      FROM findings ORDER BY id DESC LIMIT 50
+      FROM dream_findings ORDER BY id DESC LIMIT 50
     `).all() as Finding[];
 
     const findingCountRows = db.prepare(`
-      SELECT severity, COUNT(*) as count FROM findings
+      SELECT severity, COUNT(*) as count FROM dream_findings
       WHERE run_id = (SELECT MAX(id) FROM dream_runs)
       GROUP BY severity
     `).all() as Array<{ severity: string; count: number }>;

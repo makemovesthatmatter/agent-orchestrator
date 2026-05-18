@@ -2,14 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("better-sqlite3", () => ({ default: vi.fn() }));
 vi.mock("@aoagents/ao-core", () => ({ getAoBaseDir: () => "/fake/ao/dir" }));
-vi.mock("fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("fs")>();
-  return {
-    ...actual,
-    existsSync: vi.fn().mockReturnValue(false),
-    statSync: vi.fn().mockReturnValue({ size: 2048 }),
-  };
-});
+vi.mock("fs", () => ({
+  existsSync: vi.fn().mockReturnValue(false),
+  statSync: vi.fn().mockReturnValue({ size: 2048 }),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+}));
 
 import * as fs from "fs";
 import Database from "better-sqlite3";
@@ -21,7 +19,7 @@ function makeMockDb(overrides: {
   costWeek?: number;
   costMonth?: number;
 }) {
-  const { schemaV = 3, costToday = 1.0, costWeek = 5.0, costMonth = 10.0 } = overrides;
+  const { schemaV = 3, costToday = 1.0, costWeek = 5.0, _costMonth = 10.0 } = overrides;
 
   const mockPrepare = vi.fn().mockImplementation((sql: string) => ({
     get: vi.fn().mockImplementation(() => {

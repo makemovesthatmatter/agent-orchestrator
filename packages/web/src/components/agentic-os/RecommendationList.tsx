@@ -2,12 +2,12 @@
 
 interface Recommendation {
   id: number;
-  run_id: number;
+  finding_id: number;
   type: string;
   title: string;
   description: string;
   status: string;
-  payload: string | null;
+  action_payload: string | null;
   created_at: string;
 }
 
