@@ -110,6 +110,13 @@ function RunDreamButton() {
 export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
   const router = useRouter();
 
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
   const handleRecommendationAction = useCallback(async (id: number, action: "dismiss" | "snooze" | "apply") => {
     const res = await fetch("/api/agentic-os/recommendations", {
       method: "PATCH",
@@ -117,10 +124,20 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
       body: JSON.stringify({ id, action, snoozeHours: 24 }),
     });
     if (res.ok) {
+      const data = await res.json();
+      if (action === "apply" && data.session) {
+        showToast(`Agent session spawned — applying "${data.recommendation?.title}"`);
+      } else if (action === "apply" && data.spawnError) {
+        showToast(`Marked as applied but session spawn failed: ${data.spawnError}`, "error");
+      } else if (action === "dismiss") {
+        showToast("Recommendation dismissed");
+      } else if (action === "snooze") {
+        showToast("Snoozed for 24 hours");
+      }
       router.refresh();
     }
     return res.ok;
-  }, [router]);
+  }, [router, showToast]);
 
   if (!summary.available) {
     return (
@@ -273,6 +290,31 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
           </div>
         </Section>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className="fixed bottom-4 right-4 z-50 max-w-sm rounded border px-4 py-3 text-[12px] shadow-lg transition-all"
+          style={{
+            backgroundColor: "var(--color-bg-elevated)",
+            borderColor: toast.type === "error" ? "var(--color-status-error)" : "var(--color-accent)",
+            color: "var(--color-text-primary)",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            {toast.type === "success" ? (
+              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-accent)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" />
+              </svg>
+            )}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
