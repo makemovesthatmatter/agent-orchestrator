@@ -64,7 +64,7 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
   const maxModelCost = Math.max(...summary.costSummary.byModel.map((m) => m.cost), 0.001);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-base)]">
+    <div className="h-screen overflow-y-auto bg-[var(--color-bg-base)]">
       <div className="mx-auto max-w-4xl px-4 py-6">
         {/* Header */}
         <div className="mb-6">
