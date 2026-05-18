@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 interface Recommendation {
   id: number;
   finding_id: number;
@@ -29,6 +31,8 @@ const TYPE_COLORS: Record<string, { color: string; bg: string }> = {
   config_change: { color: "var(--color-accent)", bg: "var(--color-tint-violet)" },
   optimization: { color: "var(--color-status-working)", bg: "var(--color-tint-green)" },
   warning: { color: "var(--color-status-attention)", bg: "var(--color-tint-yellow)" },
+  budget_alert: { color: "var(--color-status-error)", bg: "var(--color-tint-red)" },
+  cost_optimization: { color: "var(--color-status-attention)", bg: "var(--color-tint-yellow)" },
 };
 
 function TypeBadge({ type }: { type: string }) {
@@ -47,6 +51,8 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export function RecommendationList({ recommendations }: { recommendations: Recommendation[] }) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
   if (recommendations.length === 0) {
     return (
       <div className="py-6 text-center text-[11px] text-[var(--color-text-muted)]">
@@ -57,32 +63,64 @@ export function RecommendationList({ recommendations }: { recommendations: Recom
 
   return (
     <div className="space-y-2">
-      {recommendations.map((rec) => (
-        <div
-          key={rec.id}
-          className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2.5"
-        >
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <TypeBadge type={rec.type} />
-            <span className="text-[10px] text-[var(--color-text-muted)]">
-              {formatRelativeTime(rec.created_at)}
-            </span>
-          </div>
-          <div className="mb-0.5 text-[13px] font-medium text-[var(--color-text-primary)]">
-            {rec.title}
-          </div>
-          <div
-            className="text-[11px] text-[var(--color-text-secondary)] overflow-hidden"
-            style={{
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-            }}
+      {recommendations.map((rec) => {
+        const isExpanded = expandedId === rec.id;
+        return (
+          <button
+            key={rec.id}
+            onClick={() => setExpandedId(isExpanded ? null : rec.id)}
+            className="w-full rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-border-default)]"
           >
-            {rec.description}
-          </div>
-        </div>
-      ))}
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="shrink-0 transition-transform"
+                  style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
+                  width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+                <TypeBadge type={rec.type} />
+              </div>
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                {formatRelativeTime(rec.created_at)}
+              </span>
+            </div>
+            <div className="mb-0.5 text-[13px] font-medium text-[var(--color-text-primary)]">
+              {rec.title}
+            </div>
+            {!isExpanded && (
+              <div
+                className="text-[11px] text-[var(--color-text-secondary)] overflow-hidden"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {rec.description}
+              </div>
+            )}
+            {isExpanded && (
+              <div className="mt-1 space-y-2">
+                <div className="text-[11px] text-[var(--color-text-secondary)] whitespace-pre-wrap">
+                  {rec.description}
+                </div>
+                {rec.action_payload && (
+                  <div className="rounded bg-[var(--color-bg-subtle)] px-3 py-2">
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      Action Payload
+                    </div>
+                    <pre className="text-[10px] text-[var(--color-text-secondary)] whitespace-pre-wrap font-mono">
+                      {rec.action_payload}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </button>
+        );
+      })}
       <p className="pt-1 text-[10px] text-[var(--color-text-muted)]">
         Use <code className="rounded bg-[var(--color-bg-subtle)] px-1 py-0.5 font-mono">/recommend</code> to review and act on these.
       </p>

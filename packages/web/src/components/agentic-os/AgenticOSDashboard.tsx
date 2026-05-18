@@ -138,7 +138,7 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
         {/* Dream Run History */}
         <Section title="Dream Run History">
           <div className="rounded border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2">
-            <DreamRunTable runs={summary.dreamRuns} />
+            <DreamRunTable runs={summary.dreamRuns} findings={summary.recentFindings} />
           </div>
         </Section>
 

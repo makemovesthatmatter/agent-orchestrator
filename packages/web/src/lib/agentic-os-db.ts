@@ -143,7 +143,7 @@ export function getAgenticOSSummary(): AgenticOSSummary {
 
     const recentFindings = db.prepare(`
       SELECT id, run_id, dimension, category, severity, title, detail, created_at
-      FROM dream_findings ORDER BY id DESC LIMIT 50
+      FROM dream_findings ORDER BY id DESC LIMIT 500
     `).all() as Finding[];
 
     const findingCountRows = db.prepare(`
