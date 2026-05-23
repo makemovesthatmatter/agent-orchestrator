@@ -4,6 +4,14 @@ import { join, resolve } from "path";
 import { existsSync, statSync } from "fs";
 import { homedir } from "os";
 import { getAoBaseDir } from "@aoagents/ao-core";
+import {
+  getHermesStatus,
+  getRecentHermesSessions,
+  getHermesSessionsByDay,
+  getHermesSessionsByModel,
+  getHermesSessionsBySource,
+} from "./hermes-db";
+import type { HermesStatus, HermesSession, HermesByDay, HermesByModel, HermesBySource } from "./hermes-db";
 
 const DB_PATH = join(getAoBaseDir(), "agentic-os.db");
 const DREAM_SCRIPT = resolve(homedir(), ".claude/skills/dream/lib/scheduler.py");
@@ -94,7 +102,16 @@ export interface AgenticOSSummary {
     lastScheduledAt: string | null;
     dbSizeBytes: number;
   };
+  hermes: {
+    status: HermesStatus;
+    recentSessions: HermesSession[];
+    byDay: HermesByDay[];
+    byModel: HermesByModel[];
+    bySource: HermesBySource[];
+  };
 }
+
+export type { HermesStatus, HermesSession, HermesByDay, HermesByModel, HermesBySource };
 
 export function getAgenticOSSummary(): AgenticOSSummary {
   const db = getDb();
@@ -108,6 +125,13 @@ export function getAgenticOSSummary(): AgenticOSSummary {
       recentFindings: [],
       findingCounts: { critical: 0, warning: 0, suggestion: 0, info: 0 },
       health: { lastDreamAt: null, lastScheduledAt: null, dbSizeBytes: 0 },
+      hermes: {
+        status: getHermesStatus(),
+        recentSessions: getRecentHermesSessions(),
+        byDay: getHermesSessionsByDay(),
+        byModel: getHermesSessionsByModel(),
+        bySource: getHermesSessionsBySource(),
+      },
     };
   }
 
@@ -192,6 +216,13 @@ export function getAgenticOSSummary(): AgenticOSSummary {
         lastDreamAt: configMap["last_dream_at"] ?? null,
         lastScheduledAt: configMap["last_scheduled_dream_at"] ?? null,
         dbSizeBytes,
+      },
+      hermes: {
+        status: getHermesStatus(),
+        recentSessions: getRecentHermesSessions(),
+        byDay: getHermesSessionsByDay(),
+        byModel: getHermesSessionsByModel(),
+        bySource: getHermesSessionsBySource(),
       },
     };
   } finally {
