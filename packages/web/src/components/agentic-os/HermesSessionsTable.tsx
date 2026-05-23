@@ -33,7 +33,7 @@ function truncateModel(model: string | null): string {
 function truncateTitle(title: string | null, id: string): string {
   if (!title) return id.slice(0, 8);
   const safe = redactSecrets(title);
-  return safe.length > 60 ? safe.slice(0, 60) + "…" : safe;
+  return safe.length > 80 ? safe.slice(0, 80) + "…" : safe;
 }
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -97,8 +97,15 @@ export function HermesSessionsTable({ sessions }: { sessions: HermesSession[] })
                 <td className="px-3 py-2 whitespace-nowrap">
                   <SourceBadge source={s.source} />
                 </td>
-                <td className="px-3 py-2 max-w-[200px] truncate text-[var(--color-text-primary)]" title={s.title ? redactSecrets(s.title) : s.id}>
-                  {truncateTitle(s.title, s.id)}
+                <td className="px-3 py-2 max-w-[200px] truncate" title={s.title ? redactSecrets(s.title) : s.id}>
+                  <a
+                    href={`http://localhost:9119/sessions/${encodeURIComponent(s.id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--color-text-primary)] hover:text-[var(--color-accent)] hover:underline"
+                  >
+                    {truncateTitle(s.title, s.id)}
+                  </a>
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--color-text-secondary)]">
                   {truncateModel(s.model)}

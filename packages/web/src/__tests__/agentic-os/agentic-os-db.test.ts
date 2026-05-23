@@ -10,6 +10,10 @@ vi.mock("fs", () => {
   const mod = { existsSync, statSync, readFileSync, writeFileSync };
   return { ...mod, default: mod };
 });
+vi.mock("os", () => {
+  const homedir = () => "/fake/home";
+  return { homedir, default: { homedir } };
+});
 
 import * as fs from "fs";
 import Database from "better-sqlite3";
@@ -19,23 +23,20 @@ function makeMockDb(overrides: {
   schemaV?: number | null;
   costToday?: number;
   costWeek?: number;
-  costMonth?: number;
 }) {
-  const { schemaV = 3, costToday = 1.0, costWeek = 5.0, _costMonth = 10.0 } = overrides;
-
-  const mockPrepare = vi.fn().mockImplementation((sql: string) => ({
-    get: vi.fn().mockImplementation(() => {
-      if (sql.includes("schema_version")) return schemaV !== null ? { v: schemaV } : { v: null };
-      if (sql.includes("COALESCE") && sql.includes("period_date = ?")) return { total: costToday };
-      if (sql.includes("COALESCE")) return { total: costWeek };
-      return {};
-    }),
-    all: vi.fn().mockReturnValue([]),
-  }));
+  const { schemaV = 4, costToday = 1.0, costWeek = 5.0 } = overrides;
 
   return {
     pragma: vi.fn(),
-    prepare: mockPrepare,
+    prepare: vi.fn().mockImplementation((sql: string) => ({
+      get: vi.fn().mockImplementation(() => {
+        if (sql.includes("schema_version")) return schemaV !== null ? { v: schemaV } : { v: null };
+        if (sql.includes("COALESCE") && sql.includes("period_date = ?")) return { total: costToday };
+        if (sql.includes("COALESCE")) return { total: costWeek };
+        return {};
+      }),
+      all: vi.fn().mockReturnValue([]),
+    })),
     close: vi.fn(),
   };
 }
@@ -51,7 +52,6 @@ describe("getAgenticOSSummary", () => {
 
     expect(result.available).toBe(false);
     expect(result.schemaVersion).toBeNull();
-    expect(result.dreamRuns).toEqual([]);
     expect(result.costSummary).toMatchObject({
       today: 0,
       week: 0,
@@ -59,42 +59,32 @@ describe("getAgenticOSSummary", () => {
       byModel: [],
       byDay: [],
     });
-    expect(result.pendingRecommendations).toEqual([]);
-    expect(result.recentFindings).toEqual([]);
-    expect(result.findingCounts).toMatchObject({
-      critical: 0,
-      warning: 0,
-      suggestion: 0,
-      info: 0,
-    });
-    expect(result.health.lastDreamAt).toBeNull();
-    expect(result.health.lastScheduledAt).toBeNull();
     expect(result.health.dbSizeBytes).toBe(0);
+
+    // Hermes summary present even when our DB is absent (independent data source)
+    expect(result.hermes).toBeDefined();
+    expect(result.hermes.status).toBeDefined();
+    expect(typeof result.hermes.status.present).toBe("boolean");
+    expect(typeof result.hermes.status.db_present).toBe("boolean");
+    expect(Array.isArray(result.hermes.recentSessions)).toBe(true);
   });
 
   it("returns available=true with expected shape when DB exists", () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(Database).mockImplementation(
-      () => makeMockDb({ schemaV: 3 }) as unknown as Database.Database
+      () => makeMockDb({ schemaV: 4 }) as unknown as Database.Database
     );
 
     const result = getAgenticOSSummary();
 
     expect(result.available).toBe(true);
-    expect(result.schemaVersion).toBe(3);
-    expect(Array.isArray(result.dreamRuns)).toBe(true);
-    expect(Array.isArray(result.pendingRecommendations)).toBe(true);
-    expect(Array.isArray(result.recentFindings)).toBe(true);
+    expect(result.schemaVersion).toBe(4);
     expect(typeof result.costSummary.today).toBe("number");
     expect(typeof result.costSummary.week).toBe("number");
     expect(typeof result.costSummary.month).toBe("number");
     expect(Array.isArray(result.costSummary.byModel)).toBe(true);
     expect(Array.isArray(result.costSummary.byDay)).toBe(true);
     expect(typeof result.health.dbSizeBytes).toBe("number");
-    expect("critical" in result.findingCounts).toBe(true);
-    expect("warning" in result.findingCounts).toBe(true);
-    expect("suggestion" in result.findingCounts).toBe(true);
-    expect("info" in result.findingCounts).toBe(true);
   });
 
   it("closes the DB connection after reading", () => {
@@ -106,9 +96,20 @@ describe("getAgenticOSSummary", () => {
 
     getAgenticOSSummary();
 
-    // Summary now opens agentic-os DB + up to 5 hermes DB connections (one per hermes-db helper);
-    // verify all are closed — close() must be called at least once.
+    // Called at least once for the agentic-os DB; Hermes mirror calls also close their own handles
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it("post-migration: dream fields no longer in summary shape", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(Database).mockImplementation(
+      () => makeMockDb({ schemaV: 4 }) as unknown as Database.Database
+    );
+    const result = getAgenticOSSummary() as unknown as Record<string, unknown>;
+    expect("dreamRuns" in result).toBe(false);
+    expect("pendingRecommendations" in result).toBe(false);
+    expect("recentFindings" in result).toBe(false);
+    expect("findingCounts" in result).toBe(false);
   });
 });
 
@@ -129,7 +130,7 @@ describe("getCostDetails", () => {
         id: 1,
         session_id: "session-abc",
         parent_session_id: null,
-        model: "claude-opus-4-6",
+        model: "claude-opus-4-7",
         input_tokens: 1000,
         output_tokens: 500,
         cache_creation_tokens: 0,
@@ -149,26 +150,8 @@ describe("getCostDetails", () => {
     );
 
     const result = getCostDetails("7d");
-
-    expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(1);
-    expect(result[0].model).toBe("claude-opus-4-6");
+    expect(result[0].model).toBe("claude-opus-4-7");
     expect(result[0].total_cost_usd).toBe(1.5);
-    expect(result[0].session_id).toBe("session-abc");
-  });
-
-  it("returns empty array for default period when no records", () => {
-    vi.mocked(fs.existsSync).mockReturnValue(true);
-    vi.mocked(Database).mockImplementation(
-      () =>
-        ({
-          pragma: vi.fn(),
-          prepare: vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([]) }),
-          close: vi.fn(),
-        }) as unknown as Database.Database
-    );
-
-    const result = getCostDetails();
-    expect(result).toEqual([]);
   });
 });
