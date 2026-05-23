@@ -10,8 +10,12 @@ import {
   getHermesSessionsByDay,
   getHermesSessionsByModel,
   getHermesSessionsBySource,
+  type HermesStatus,
+  type HermesSession,
+  type HermesByDay,
+  type HermesByModel,
+  type HermesBySource,
 } from "./hermes-db";
-import type { HermesStatus, HermesSession, HermesByDay, HermesByModel, HermesBySource } from "./hermes-db";
 
 const DB_PATH = join(getAoBaseDir(), "agentic-os.db");
 const DREAM_SCRIPT = resolve(homedir(), ".claude/skills/dream/lib/scheduler.py");

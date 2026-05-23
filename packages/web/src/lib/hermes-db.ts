@@ -50,7 +50,9 @@ export function getHermesStatus(): HermesStatus {
   const db = openReadOnly();
   if (!db) return { present, db_present, last_session_at: null, session_count: 0 };
   try {
-    const row = db.prepare(`SELECT COUNT(*) AS c, MAX(started_at) AS last FROM sessions`).get() as any;
+    const row = db
+      .prepare(`SELECT COUNT(*) AS c, MAX(started_at) AS last FROM sessions`)
+      .get() as { c: number; last: number | null } | undefined;
     return {
       present,
       db_present,
