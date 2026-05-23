@@ -1,4 +1,5 @@
 import type { HermesBySource } from "@/lib/hermes-db";
+import { redactSecrets } from "@/lib/redact";
 
 export function HermesSourceBreakdown({ bySource }: { bySource: HermesBySource[] }) {
   if (bySource.length === 0) {
@@ -21,7 +22,7 @@ export function HermesSourceBreakdown({ bySource }: { bySource: HermesBySource[]
           <div key={s.source}>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
-                {s.source}
+                {redactSecrets(s.source)}
               </span>
               <div className="flex items-center gap-2 text-[11px] tabular-nums text-[var(--color-text-secondary)]">
                 <span>{s.sessions} session{s.sessions !== 1 ? "s" : ""}</span>

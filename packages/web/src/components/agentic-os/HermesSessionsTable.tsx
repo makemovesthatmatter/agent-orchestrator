@@ -1,4 +1,5 @@
 import type { HermesSession } from "@/lib/hermes-db";
+import { redactSecrets } from "@/lib/redact";
 
 function formatRelative(unixSeconds: number): string {
   const diffMs = Date.now() - unixSeconds * 1000;
@@ -25,12 +26,14 @@ function formatDuration(startedAt: number, endedAt: number | null): string {
 function truncateModel(model: string | null): string {
   if (!model) return "—";
   const slashIdx = model.indexOf("/");
-  return slashIdx !== -1 ? model.slice(slashIdx + 1) : model;
+  const stripped = slashIdx !== -1 ? model.slice(slashIdx + 1) : model;
+  return redactSecrets(stripped);
 }
 
 function truncateTitle(title: string | null, id: string): string {
   if (!title) return id.slice(0, 8);
-  return title.length > 60 ? title.slice(0, 60) + "…" : title;
+  const safe = redactSecrets(title);
+  return safe.length > 60 ? safe.slice(0, 60) + "…" : safe;
 }
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -41,7 +44,8 @@ const SOURCE_COLORS: Record<string, string> = {
 };
 
 function SourceBadge({ source }: { source: string }) {
-  const color = SOURCE_COLORS[source.toLowerCase()] ?? "var(--color-text-muted)";
+  const safe = redactSecrets(source);
+  const color = SOURCE_COLORS[safe.toLowerCase()] ?? "var(--color-text-muted)";
   return (
     <span
       className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
@@ -52,7 +56,7 @@ function SourceBadge({ source }: { source: string }) {
         opacity: 0.9,
       }}
     >
-      {source}
+      {safe}
     </span>
   );
 }
@@ -93,7 +97,7 @@ export function HermesSessionsTable({ sessions }: { sessions: HermesSession[] })
                 <td className="px-3 py-2 whitespace-nowrap">
                   <SourceBadge source={s.source} />
                 </td>
-                <td className="px-3 py-2 max-w-[200px] truncate text-[var(--color-text-primary)]" title={s.title ?? s.id}>
+                <td className="px-3 py-2 max-w-[200px] truncate text-[var(--color-text-primary)]" title={s.title ? redactSecrets(s.title) : s.id}>
                   {truncateTitle(s.title, s.id)}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-[var(--color-text-secondary)]">
