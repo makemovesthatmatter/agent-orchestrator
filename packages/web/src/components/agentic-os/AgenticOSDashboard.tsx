@@ -9,6 +9,9 @@ import { CostChart } from "./CostChart";
 import { DreamRunTable } from "./DreamRunTable";
 import { FindingsBadges } from "./FindingsBadges";
 import { RecommendationList } from "./RecommendationList";
+import { HermesStatusBanner } from "./HermesStatusBanner";
+import { HermesSessionsTable } from "./HermesSessionsTable";
+import { HermesSourceBreakdown } from "./HermesSourceBreakdown";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -182,6 +185,9 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
           </p>
         </div>
 
+        {/* Hermes Status */}
+        <HermesStatusBanner status={summary.hermes.status} />
+
         {/* Cost Overview */}
         <Section title="Cost Overview">
           <CostCards
@@ -189,6 +195,18 @@ export function AgenticOSDashboard({ summary }: { summary: AgenticOSSummary }) {
             week={summary.costSummary.week}
             month={summary.costSummary.month}
           />
+        </Section>
+
+        {/* Hermes Sessions */}
+        <Section title="Hermes Sessions (Recent 50)">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <HermesSessionsTable sessions={summary.hermes.recentSessions} />
+            </div>
+            <div>
+              <HermesSourceBreakdown bySource={summary.hermes.bySource} />
+            </div>
+          </div>
         </Section>
 
         {/* Cost by Model */}

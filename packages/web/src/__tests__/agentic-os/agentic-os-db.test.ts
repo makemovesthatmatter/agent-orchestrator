@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("better-sqlite3", () => ({ default: vi.fn() }));
 vi.mock("@aoagents/ao-core", () => ({ getAoBaseDir: () => "/fake/ao/dir" }));
-vi.mock("fs", () => ({
-  existsSync: vi.fn().mockReturnValue(false),
-  statSync: vi.fn().mockReturnValue({ size: 2048 }),
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
-}));
+vi.mock("fs", () => {
+  const existsSync = vi.fn().mockReturnValue(false);
+  const statSync = vi.fn().mockReturnValue({ size: 2048 });
+  const readFileSync = vi.fn();
+  const writeFileSync = vi.fn();
+  const mod = { existsSync, statSync, readFileSync, writeFileSync };
+  return { ...mod, default: mod };
+});
 
 import * as fs from "fs";
 import Database from "better-sqlite3";
@@ -104,7 +106,9 @@ describe("getAgenticOSSummary", () => {
 
     getAgenticOSSummary();
 
-    expect(mockClose).toHaveBeenCalledOnce();
+    // Summary now opens agentic-os DB + up to 5 hermes DB connections (one per hermes-db helper);
+    // verify all are closed — close() must be called at least once.
+    expect(mockClose).toHaveBeenCalled();
   });
 });
 
